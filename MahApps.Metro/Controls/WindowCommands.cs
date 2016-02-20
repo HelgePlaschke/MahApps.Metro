@@ -1,191 +1,318 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
-using System.Text;
+using System.Collections.Specialized;
+using System.ComponentModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
-using System.Windows.Shapes;
-using MahApps.Metro.Native;
 
 namespace MahApps.Metro.Controls
 {
-    [TemplatePart(Name = "PART_Max", Type = typeof(Button))]
-    [TemplatePart(Name = "PART_Close", Type = typeof(Button))]
-    [TemplatePart(Name = "PART_Min", Type = typeof(Button))]
-    public class WindowCommands : ItemsControl
+    public class WindowCommands : ItemsControl, INotifyPropertyChanged
     {
-        public event ClosingWindowEventHandler ClosingWindow;
-        public delegate void ClosingWindowEventHandler(object sender, ClosingWindowEventHandlerArgs args);
+        public static readonly DependencyProperty ThemeProperty =
+            DependencyProperty.Register("Theme", typeof(Theme), typeof(WindowCommands),
+                                        new PropertyMetadata(Theme.Light, OnThemeChanged));
 
-        public string Minimize
+        /// <summary>
+        /// Gets or sets the value indicating current theme.
+        /// </summary>
+        public Theme Theme
         {
-            get
+            get { return (Theme)GetValue(ThemeProperty); }
+            set { SetValue(ThemeProperty, value); }
+        }
+
+        public static readonly DependencyProperty LightTemplateProperty =
+            DependencyProperty.Register("LightTemplate", typeof(ControlTemplate), typeof(WindowCommands),
+                                        new PropertyMetadata(null));
+
+        /// <summary>
+        /// Gets or sets the value indicating light theme template.
+        /// </summary>
+        public ControlTemplate LightTemplate
+        {
+            get { return (ControlTemplate)GetValue(LightTemplateProperty); }
+            set { SetValue(LightTemplateProperty, value); }
+        }
+
+        public static readonly DependencyProperty DarkTemplateProperty =
+            DependencyProperty.Register("DarkTemplate", typeof(ControlTemplate), typeof(WindowCommands),
+                                        new PropertyMetadata(null));
+
+        /// <summary>
+        /// Gets or sets the value indicating light theme template.
+        /// </summary>
+        public ControlTemplate DarkTemplate
+        {
+            get { return (ControlTemplate)GetValue(DarkTemplateProperty); }
+            set { SetValue(DarkTemplateProperty, value); }
+        }
+
+        public static readonly DependencyProperty ShowSeparatorsProperty =
+            DependencyProperty.Register("ShowSeparators", typeof(bool), typeof(WindowCommands),
+                                        new FrameworkPropertyMetadata(true, FrameworkPropertyMetadataOptions.AffectsArrange | FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsRender,
+                                                                      OnShowSeparatorsChanged));
+
+        /// <summary>
+        /// Gets or sets the value indicating whether to show the separators.
+        /// </summary>
+        public bool ShowSeparators
+        {
+            get { return (bool)GetValue(ShowSeparatorsProperty); }
+            set { SetValue(ShowSeparatorsProperty, value); }
+        }
+
+        public static readonly DependencyProperty ShowLastSeparatorProperty =
+            DependencyProperty.Register("ShowLastSeparator", typeof(bool), typeof(WindowCommands),
+                                        new FrameworkPropertyMetadata(true, FrameworkPropertyMetadataOptions.AffectsArrange | FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsRender,
+                                                                      OnShowLastSeparatorChanged));
+        
+        /// <summary>
+        /// Gets or sets the value indicating whether to show the last separator.
+        /// </summary>
+        public bool ShowLastSeparator
+        {
+            get { return (bool)GetValue(ShowLastSeparatorProperty); }
+            set { SetValue(ShowLastSeparatorProperty, value); }
+        }
+
+        public static readonly DependencyProperty SeparatorHeightProperty =
+            DependencyProperty.Register("SeparatorHeight", typeof(int), typeof(WindowCommands),
+                                        new FrameworkPropertyMetadata(15, FrameworkPropertyMetadataOptions.AffectsArrange | FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsRender));
+
+        /// <summary>
+        /// Gets or sets the value indicating separator height.
+        /// </summary>
+        public int SeparatorHeight
+        {
+            get { return (int)GetValue(SeparatorHeightProperty); }
+            set { SetValue(SeparatorHeightProperty, value); }
+        }
+
+        private static void OnThemeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            // only apply theme if value is changed
+            if (e.NewValue == e.OldValue)
             {
-                if (string.IsNullOrEmpty(minimize))
-                    minimize = GetCaption(900);
-                return minimize;
+                return;
+            }
+
+            // get the object
+            var obj = (WindowCommands)d;
+
+            // apply control template
+            if ((Theme)e.NewValue == Theme.Light)
+            {
+                if (obj.LightTemplate != null)
+                {
+                    obj.SetValue(TemplateProperty, obj.LightTemplate);
+                }
+            }
+            else if ((Theme)e.NewValue == Theme.Dark)
+            {
+                if (obj.DarkTemplate != null)
+                {
+                    obj.SetValue(TemplateProperty, obj.DarkTemplate);
+                }
             }
         }
 
-        public string Maximize
+        private static void OnShowSeparatorsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            get
+            if (e.NewValue == e.OldValue)
             {
-                if (string.IsNullOrEmpty(maximize))
-                    maximize = GetCaption(901);
-                return maximize;
+                return;
             }
+            ((WindowCommands)d).ResetSeparators();
         }
 
-        public string Close
+        private static void OnShowLastSeparatorChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            get
+            if (e.NewValue == e.OldValue)
             {
-                if (string.IsNullOrEmpty(closeText))
-                    closeText = GetCaption(905);
-                return closeText;
+                return;
             }
+            ((WindowCommands)d).ResetSeparators(false);
         }
-
-        public string Restore
-        {
-            get
-            {
-                if (string.IsNullOrEmpty(restore))
-                    restore = GetCaption(903);
-                return restore;
-            }
-        }
-
-        private static string minimize;
-        private static string maximize;
-        private static string closeText;
-        private static string restore;
-        private Button min;
-        private Button max;
-        private Button close;
-        private IntPtr user32 = IntPtr.Zero;
 
         static WindowCommands()
         {
             DefaultStyleKeyProperty.OverrideMetadata(typeof(WindowCommands), new FrameworkPropertyMetadata(typeof(WindowCommands)));
         }
 
-        ~WindowCommands()
+        public WindowCommands()
         {
-            if (user32 != IntPtr.Zero)
-                UnsafeNativeMethods.FreeLibrary(user32);
+            this.Loaded += WindowCommands_Loaded;
         }
 
-        private string GetCaption(int id)
+        protected override DependencyObject GetContainerForItemOverride()
         {
-            if (user32 == IntPtr.Zero)
-                user32 = UnsafeNativeMethods.LoadLibrary(Environment.SystemDirectory + "\\User32.dll");
-
-            var sb = new StringBuilder(256);
-            UnsafeNativeMethods.LoadString(user32, (uint)id, sb, sb.Capacity);
-            return sb.ToString().Replace("&", "");
+            return new WindowCommandsItem();
         }
 
-        public override void OnApplyTemplate()
+        protected override bool IsItemItsOwnContainerOverride(object item)
         {
-            base.OnApplyTemplate();
-            close = Template.FindName("PART_Close", this) as Button;
-            if (close != null)
-                close.Click += CloseClick;
-
-            max = Template.FindName("PART_Max", this) as Button;
-            if (max != null)
-                max.Click += MaximiseClick;
-
-            min = Template.FindName("PART_Min", this) as Button;
-            if (min != null)
-                min.Click += MinimiseClick;
-
-            RefreshMaximiseIconState();
+            return item is WindowCommandsItem;
         }
 
-        protected void OnClosingWindow(ClosingWindowEventHandlerArgs args)
+        protected override void PrepareContainerForItemOverride(DependencyObject element, object item)
         {
-            var handler = ClosingWindow;
-            if (handler != null)
-                handler(this, args);
+            base.PrepareContainerForItemOverride(element, item);
+
+            this.AttachVisibilityHandler(element as WindowCommandsItem, item as UIElement);
+            ResetSeparators();
         }
 
-        private void MinimiseClick(object sender, RoutedEventArgs e)
+        protected override void ClearContainerForItemOverride(DependencyObject element, object item)
         {
-            var parentWindow = GetParentWindow();
-            if (parentWindow != null)
-                parentWindow.WindowState = WindowState.Minimized;
+            base.ClearContainerForItemOverride(element, item);
+
+            this.DetachVisibilityHandler(element as WindowCommandsItem);
+            ResetSeparators(false);
         }
 
-        private void MaximiseClick(object sender, RoutedEventArgs e)
+        private void AttachVisibilityHandler(WindowCommandsItem container, UIElement item)
         {
-            var parentWindow = GetParentWindow();
-            if (parentWindow == null)
+            if (container != null)
+            {
+                // hide the container, if there is no UIElement
+                if (null == item)
+                {
+                    container.Visibility = Visibility.Collapsed;
+                    return;
+                }
+
+                container.Visibility = item.Visibility;
+                var isVisibilityNotifier = new PropertyChangeNotifier(item, UIElement.VisibilityProperty);
+                isVisibilityNotifier.ValueChanged += VisibilityPropertyChanged;
+                container.VisibilityPropertyChangeNotifier = isVisibilityNotifier;
+            }
+        }
+
+        private void DetachVisibilityHandler(WindowCommandsItem container)
+        {
+            if (container != null)
+            {
+                container.VisibilityPropertyChangeNotifier = null;
+            }
+        }
+
+        private void VisibilityPropertyChanged(object sender, EventArgs e)
+        {
+            var item = sender as UIElement;
+            if (item != null)
+            {
+                var container = GetWindowCommandsItem(item);
+                if (container != null)
+                {
+                    container.Visibility = item.Visibility;
+                    ResetSeparators();
+                }
+            }
+        }
+
+        protected override void OnItemsChanged(NotifyCollectionChangedEventArgs e)
+        {
+            base.OnItemsChanged(e);
+            ResetSeparators();
+        }
+
+        private void ResetSeparators(bool reset = true)
+        {
+            if (Items.Count == 0)
+            {
                 return;
-
-            parentWindow.WindowState = parentWindow.WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
-            RefreshMaximiseIconState(parentWindow);
-        }
-
-        public void RefreshMaximiseIconState()
-        {
-            RefreshMaximiseIconState(GetParentWindow());
-        }
-
-        private void RefreshMaximiseIconState(Window parentWindow)
-        {
-            if (parentWindow == null)
-                return;
-
-            if (parentWindow.WindowState == WindowState.Normal)
-            {
-                var maxpath = (Path)max.FindName("MaximisePath");
-                maxpath.Visibility = Visibility.Visible;
-
-                var restorepath = (Path)max.FindName("RestorePath");
-                restorepath.Visibility = Visibility.Collapsed;
-
-                max.ToolTip = Maximize;
             }
-            else
-            {
-                var restorepath = (Path)max.FindName("RestorePath");
-                restorepath.Visibility = Visibility.Visible;
 
-                var maxpath = (Path)max.FindName("MaximisePath");
-                maxpath.Visibility = Visibility.Collapsed;
-                max.ToolTip = Restore;
+            var windowCommandsItems = this.GetWindowCommandsItems().ToList();
+
+            if (reset)
+            {
+                foreach (var windowCommandsItem in windowCommandsItems)
+                {
+                    windowCommandsItem.IsSeparatorVisible = ShowSeparators;
+                }
+            }
+
+            var lastContainer = windowCommandsItems.LastOrDefault(i => i.IsVisible);
+            if (lastContainer != null)
+            {
+                lastContainer.IsSeparatorVisible = ShowSeparators && ShowLastSeparator;
             }
         }
 
-        private void CloseClick(object sender, RoutedEventArgs e)
+        private WindowCommandsItem GetWindowCommandsItem(object item)
         {
-            var closingWindowEventHandlerArgs = new ClosingWindowEventHandlerArgs();
-            OnClosingWindow(closingWindowEventHandlerArgs);
-
-            if (closingWindowEventHandlerArgs.Cancelled)
-                return;
-
-            var parentWindow = GetParentWindow();
-            if (parentWindow != null)
+            var windowCommandsItem = item as WindowCommandsItem;
+            if (windowCommandsItem != null)
             {
-                parentWindow.Close();
+                return windowCommandsItem;
+            }
+            return (WindowCommandsItem)this.ItemContainerGenerator.ContainerFromItem(item);
+        }
+
+        private IEnumerable<WindowCommandsItem> GetWindowCommandsItems()
+        {
+            return (from object item in (IEnumerable)this.Items select this.GetWindowCommandsItem(item)).Where(i => i != null);
+        }
+
+        private void WindowCommands_Loaded(object sender, RoutedEventArgs e)
+        {
+            this.Loaded -= WindowCommands_Loaded;
+            var parentWindow = this.ParentWindow;
+            if (null == parentWindow)
+            {
+                this.ParentWindow = this.TryFindParent<Window>();
             }
         }
 
-        private Window GetParentWindow()
+        private Window _parentWindow;
+
+        public Window ParentWindow
         {
-            var parent = VisualTreeHelper.GetParent(this);
-
-            while (parent != null && !(parent is Window))
+            get { return _parentWindow; }
+            set
             {
-                parent = VisualTreeHelper.GetParent(parent);
+                if (Equals(_parentWindow, value))
+                {
+                    return;
+                }
+                _parentWindow = value;
+                this.RaisePropertyChanged("ParentWindow");
             }
+        }
 
-            var parentWindow = parent as Window;
-            return parentWindow;
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        protected virtual void RaisePropertyChanged(string propertyName = null)
+        {
+            var handler = PropertyChanged;
+            if (handler != null) handler(this, new PropertyChangedEventArgs(propertyName));
+        }
+    }
+
+    [TemplatePart(Name = PART_ContentPresenter, Type = typeof(UIElement))]
+    [TemplatePart(Name = PART_Separator, Type = typeof(UIElement))]
+    public class WindowCommandsItem : ContentControl
+    {
+        private const string PART_ContentPresenter = "PART_ContentPresenter";
+        private const string PART_Separator = "PART_Separator";
+
+        internal PropertyChangeNotifier VisibilityPropertyChangeNotifier { get; set; }
+
+        public static readonly DependencyProperty IsSeparatorVisibleProperty =
+            DependencyProperty.Register("IsSeparatorVisible", typeof(bool), typeof(WindowCommandsItem),
+                                        new FrameworkPropertyMetadata(true, FrameworkPropertyMetadataOptions.Inherits|FrameworkPropertyMetadataOptions.AffectsArrange | FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsRender));
+
+        /// <summary>
+        /// Gets or sets the value indicating whether to show the separator.
+        /// </summary>
+        public bool IsSeparatorVisible
+        {
+            get { return (bool)GetValue(IsSeparatorVisibleProperty); }
+            set { SetValue(IsSeparatorVisibleProperty, value); }
         }
     }
 }

@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Markup;
 
-[assembly: AssemblyCopyright("Copyright © MahApps.Metro 2013")]
+[assembly: AssemblyCopyright("Copyright © MahApps.Metro 2011-2016")]
 [assembly: ComVisible(false)]
 
 [assembly: ThemeInfo(ResourceDictionaryLocation.None, ResourceDictionaryLocation.SourceAssembly)]
@@ -12,5 +12,10 @@ using System.Windows.Markup;
 [assembly: XmlnsDefinition("http://metro.mahapps.com/winfx/xaml/shared", "MahApps.Metro.Converters")]
 [assembly: XmlnsDefinition("http://metro.mahapps.com/winfx/xaml/controls", "MahApps.Metro.Controls")]
 
-[assembly: AssemblyVersion("0.0.0.999")]
-[assembly: AssemblyFileVersion("0.0.0.999")]
+[assembly: AssemblyVersion("1.2.4.0")]
+[assembly: AssemblyFileVersion("1.2.4.0")]
+[assembly: AssemblyInformationalVersion("1.2.4.0")]
+[assembly: AssemblyTitleAttribute("MahApps.Metro")]
+[assembly: AssemblyDescriptionAttribute("Toolkit for creating Metro styled WPF apps")]
+[assembly: AssemblyProductAttribute("MahApps.Metro 1.2.4")]
+[assembly: AssemblyCompany("MahApps")]

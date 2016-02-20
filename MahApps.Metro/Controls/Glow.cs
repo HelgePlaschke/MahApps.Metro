@@ -4,48 +4,47 @@ using System.Windows.Media;
 
 namespace MahApps.Metro.Controls
 {
-	public class Glow : Control
-	{
-		static Glow()
-		{
-			DefaultStyleKeyProperty.OverrideMetadata(typeof(Glow), new FrameworkPropertyMetadata(typeof(Glow)));
-		}
+    public class Glow : Control
+    {
+        public static readonly DependencyProperty GlowBrushProperty = DependencyProperty.Register("GlowBrush", typeof(Brush), typeof(Glow), new UIPropertyMetadata(Brushes.Transparent));
+        public static readonly DependencyProperty NonActiveGlowBrushProperty = DependencyProperty.Register("NonActiveGlowBrush", typeof(Brush), typeof(Glow), new UIPropertyMetadata(Brushes.Transparent));
+        public static readonly DependencyProperty IsGlowProperty = DependencyProperty.Register("IsGlow", typeof(bool), typeof(Glow), new UIPropertyMetadata(true));
+        public static readonly DependencyProperty OrientationProperty = DependencyProperty.Register("Orientation", typeof(Orientation), typeof(Glow), new UIPropertyMetadata(Orientation.Vertical));
+        public static readonly DependencyProperty DirectionProperty = DependencyProperty.Register("Direction", typeof(GlowDirection), typeof(Glow), new UIPropertyMetadata(GlowDirection.Top));
 
+        static Glow()
+        {
+            DefaultStyleKeyProperty.OverrideMetadata(typeof(Glow), new FrameworkPropertyMetadata(typeof(Glow)));
+        }
 
-		#region GlowColor
+        public Brush GlowBrush
+        {
+            get { return (Brush)this.GetValue(GlowBrushProperty); }
+            set { this.SetValue(GlowBrushProperty, value); }
+        }
 
-		public Color GlowColor
-		{
-			get { return (Color)this.GetValue(Glow.GlowColorProperty); }
-			set { this.SetValue(Glow.GlowColorProperty, value); }
-		}
-		public static readonly DependencyProperty GlowColorProperty = DependencyProperty.Register("GlowColor", typeof(Color), typeof(Glow), new UIPropertyMetadata(Colors.Transparent));
+        public Brush NonActiveGlowBrush
+        {
+            get { return (Brush)this.GetValue(NonActiveGlowBrushProperty); }
+            set { this.SetValue(NonActiveGlowBrushProperty, value); }
+        }
 
-		#endregion
+        public bool IsGlow
+        {
+            get { return (bool)this.GetValue(IsGlowProperty); }
+            set { this.SetValue(IsGlowProperty, value); }
+        }
 
-		#region IsGlow
+        public Orientation Orientation
+        {
+            get { return (Orientation)this.GetValue(OrientationProperty); }
+            set { this.SetValue(OrientationProperty, value); }
+        }
 
-		public bool IsGlow
-		{
-			get { return (bool)this.GetValue(Glow.IsGlowProperty); }
-			set { this.SetValue(Glow.IsGlowProperty, value); }
-		}
-		public static readonly DependencyProperty IsGlowProperty =
-			DependencyProperty.Register("IsGlow", typeof(bool), typeof(Glow), new UIPropertyMetadata(true));
-
-		#endregion
-
-		#region Orientation
-
-		public Orientation Orientation
-		{
-			get { return (Orientation)this.GetValue(Glow.OrientationProperty); }
-			set { this.SetValue(Glow.OrientationProperty, value); }
-		}
-		public static readonly DependencyProperty OrientationProperty =
-			DependencyProperty.Register("Orientation", typeof(Orientation), typeof(Glow), new UIPropertyMetadata(Orientation.Vertical));
-
-		#endregion
-
-	}
+        public GlowDirection Direction
+        {
+            get { return (GlowDirection)this.GetValue(DirectionProperty); }
+            set { this.SetValue(DirectionProperty, value); }
+        }
+    }
 }

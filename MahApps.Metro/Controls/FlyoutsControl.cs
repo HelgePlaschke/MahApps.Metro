@@ -1,17 +1,41 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Collections.Specialized;
-using System.ComponentModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace MahApps.Metro.Controls
 {
+    /// <summary>
+    /// A FlyoutsControl is for displaying flyouts in a MetroWindow.
+    /// <see cref="MetroWindow"/>
+    /// </summary>
     [StyleTypedProperty(Property = "ItemContainerStyle", StyleTargetType = typeof(Flyout))]
     public class FlyoutsControl : ItemsControl
     {
+        public static readonly DependencyProperty OverrideExternalCloseButtonProperty = DependencyProperty.Register("OverrideExternalCloseButton", typeof(MouseButton?), typeof(FlyoutsControl), new PropertyMetadata(null));
+        public static readonly DependencyProperty OverrideIsPinnedProperty = DependencyProperty.Register("OverrideIsPinned", typeof(bool), typeof(FlyoutsControl), new PropertyMetadata(false));
+
+        /// <summary>
+        /// Gets/sets whether <see cref="MahApps.Metro.Controls.Flyout.ExternalCloseButton"/> is ignored and all flyouts behave as if it was set to the value of this property.
+        /// </summary>
+        public MouseButton? OverrideExternalCloseButton
+        {
+            get { return (MouseButton?)GetValue(OverrideExternalCloseButtonProperty); }
+            set { SetValue(OverrideExternalCloseButtonProperty, value); }
+        }
+
+        /// <summary>
+        /// Gets/sets whether <see cref="MahApps.Metro.Controls.Flyout.IsPinned"/> is ignored and all flyouts behave as if it was set false.
+        /// </summary>
+        public bool OverrideIsPinned
+        {
+            get { return (bool)GetValue(OverrideIsPinnedProperty); }
+            set { SetValue(OverrideIsPinnedProperty, value); }
+        }
+
         static FlyoutsControl()
         {
             DefaultStyleKeyProperty.OverrideMetadata(
@@ -28,59 +52,47 @@ namespace MahApps.Metro.Controls
             return item is Flyout;
         }
 
-        protected override void OnItemsChanged(NotifyCollectionChangedEventArgs e)
+        protected override void PrepareContainerForItemOverride(DependencyObject element, object item)
         {
-            base.OnItemsChanged(e);
+            base.PrepareContainerForItemOverride(element, item);
+            this.AttachHandlers((Flyout)element);
+        }
 
-            switch (e.Action)
+        protected override void ClearContainerForItemOverride(DependencyObject element, object item)
+        {
+            ((Flyout) element).CleanUp(this);
+            base.ClearContainerForItemOverride(element, item);
+        }
+
+        private void AttachHandlers(Flyout flyout)
+        {
+            var isOpenNotifier = new PropertyChangeNotifier(flyout, Flyout.IsOpenProperty);
+            isOpenNotifier.ValueChanged += FlyoutStatusChanged;
+            flyout.IsOpenPropertyChangeNotifier = isOpenNotifier;
+
+            var themeNotifier = new PropertyChangeNotifier(flyout, Flyout.ThemeProperty);
+            themeNotifier.ValueChanged += FlyoutStatusChanged;
+            flyout.ThemePropertyChangeNotifier = themeNotifier;
+        }
+
+        private void FlyoutStatusChanged(object sender, EventArgs e)
+        {
+            var flyout = this.GetFlyout(sender); //Get the flyout that raised the handler.
+
+            this.HandleFlyoutStatusChange(flyout, this.TryFindParent<MetroWindow>());
+        }
+
+        internal void HandleFlyoutStatusChange(Flyout flyout, MetroWindow parentWindow)
+        {
+            if (flyout == null || parentWindow == null)
             {
-                case NotifyCollectionChangedAction.Add:
-                    this.AttachHandlers(this.GetFlyouts(e.NewItems));
-                    break;
-                case NotifyCollectionChangedAction.Replace:
-                    this.AttachHandlers(this.GetFlyouts(e.NewItems));
-                    this.DetachHandlers(this.GetFlyouts(e.OldItems));
-                    break;
-                case NotifyCollectionChangedAction.Remove:
-                    this.DetachHandlers(this.GetFlyouts(e.OldItems));
-                    break;
-                case NotifyCollectionChangedAction.Reset:
-                    this.AttachHandlers(this.GetFlyouts(this.Items));
-                    break;
+                return;
             }
-        }
 
-        private void AttachHandlers(IEnumerable<Flyout> items)
-        {
-            foreach (var item in items)
-            {
-                this.AttachHandlers(item);
-            }
-        }
+            this.ReorderZIndices(flyout);
 
-        private void AttachHandlers(Flyout item)
-        {
-            var isOpenChanged = DependencyPropertyDescriptor.FromProperty(Flyout.IsOpenProperty, typeof(Flyout));
-            isOpenChanged.AddValueChanged(item, this.FlyoutIsOpenChanged);
-        }
-
-        private void DetachHandlers(IEnumerable<Flyout> items)
-        {
-            foreach (var item in items)
-            {
-                this.DetachHandlers(item);
-            }
-        }
-
-        private void DetachHandlers(Flyout item)
-        {
-            var isOpenChanged = DependencyPropertyDescriptor.FromProperty(Flyout.IsOpenProperty, typeof(Flyout));
-            isOpenChanged.RemoveValueChanged(item, this.FlyoutIsOpenChanged);
-        }
-
-        private void FlyoutIsOpenChanged(object sender, EventArgs e)
-        {
-            this.ReorderZIndices(this.GetFlyout(sender));
+            var visibleFlyouts = this.GetFlyouts(this.Items).Where(i => i.IsOpen).OrderBy(Panel.GetZIndex);
+            parentWindow.HandleFlyoutStatusChange(flyout, visibleFlyouts);
         }
 
         private Flyout GetFlyout(object item)
@@ -92,6 +104,11 @@ namespace MahApps.Metro.Controls
             }
 
             return (Flyout)this.ItemContainerGenerator.ContainerFromItem(item);
+        }
+
+        internal IEnumerable<Flyout> GetFlyouts()
+        {
+            return GetFlyouts(this.Items);
         }
 
         private IEnumerable<Flyout> GetFlyouts(IEnumerable items)
